@@ -16,6 +16,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class TelegramBotRunCommand extends Command
 {
+    private ?string $lastDailyReminderDate = null;
+
     public function __construct(
         private readonly TelegramBotClient $telegramBotClient,
         private readonly GptClient $gptClient,
@@ -41,6 +43,7 @@ class TelegramBotRunCommand extends Command
         $output->writeln('<info>Starting Telegram bot (long polling123)...</info>');
 
         while (true) {
+            $this->maybeSendDailyReminder($output);
             try {
                 $updates = $this->telegramBotClient->getUpdates($offset, $timeout);
             } catch (\Throwable $e) {
@@ -149,6 +152,27 @@ class TelegramBotRunCommand extends Command
         }
 
         return null;
+    }
+
+    private function maybeSendDailyReminder(OutputInterface $output): void
+    {
+        $chatId = $_ENV['SCHEDULED_CHAT_ID'];
+        if ($chatId === false || $chatId === '' || $chatId === null) return;
+
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Kyiv'));
+        $currentTime = $now->format('H:i');
+        $currentDate = $now->format('Y-m-d');
+
+        if ($currentTime !== '04:20') return;
+        if ($this->lastDailyReminderDate === $currentDate) return;
+
+        try {
+            $this->telegramBotClient->sendMessage($chatId, 'Time to continue');
+            $this->lastDailyReminderDate = $currentDate;
+            $output->writeln('<info>Daily reminder sent at 04:20.</info>');
+        } catch (\Throwable $e) {
+            $output->writeln('<error>Failed to send daily reminder: ' . $e->getMessage() . '</error>');
+        }
     }
 }
 
