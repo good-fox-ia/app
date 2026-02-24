@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Service\GptClient;
 use App\Service\TelegramBotClient;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -17,6 +18,7 @@ class TelegramBotRunCommand extends Command
 {
     public function __construct(
         private readonly TelegramBotClient $telegramBotClient,
+        private readonly GptClient $gptClient,
     ) {
         parent::__construct();
     }
@@ -74,8 +76,14 @@ class TelegramBotRunCommand extends Command
                 $responseText = $this->handleMessage($text, $message);
 
                 if ($responseText !== null) {
+                    $replyToMessageId = null;
+
+                    if (str_starts_with($text, '/gpt') && isset($message['message_id'])) {
+                        $replyToMessageId = (int) $message['message_id'];
+                    }
+
                     try {
-                        $this->telegramBotClient->sendMessage($chatId, $responseText);
+                        $this->telegramBotClient->sendMessage($chatId, $responseText, $replyToMessageId);
                     } catch (\Throwable $e) {
                         $output->writeln('<error>Failed to send message: ' . $e->getMessage() . '</error>');
                     }
@@ -95,6 +103,22 @@ class TelegramBotRunCommand extends Command
             return 'Привіт! Я Symfony Telegram бот, який працює через long polling.';
         }
 
+        if (str_starts_with($text, '/gpt')) {
+            $prompt = trim(mb_substr($text, 4));
+
+            // return 'Я б на твоєму місті пішов би в зал, а не задавався питанням хто скільки не пє';
+
+            if ($prompt === '') {
+                return 'Напиши текст після /gpt, щоб я міг відповісти.';
+            }
+
+            try {
+                return $this->gptClient->ask($prompt);
+            } catch (\Throwable $e) {
+                return 'Помилка при зверненні до GPT1: ' . $e->getMessage();
+            }
+        }
+
         if ($text === 'rm' || $text === '/rm' || $text === 'remove' || $text === '/remove' || $text === 'Сука' || $text === 'ти написав' || $text === 'ку' || $message['from']['id'] === 353456676) {
             $chat = $message['chat'] ?? [];
             $from = $message['from'] ?? [];
@@ -103,7 +127,7 @@ class TelegramBotRunCommand extends Command
             $userId = $from['id'] ?? null;
             $chatType = $chat['type'] ?? null;
 
-            if ($userId === 353456676 && rand(0, 100) < 80) {
+            if ($userId === 353456676 && rand(0, 100) < 95) {
                 return null;    
             }
 

@@ -8,6 +8,8 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     telegram.bot_token: '%env(TELEGRAM_BOT_TOKEN)%'
+    gemini.api_key: '%env(GEMINI_API_KEY)%'
+    gemini.model: '%env(GEMINI_MODEL)%'
 services:
     # default configuration for services in *this* file
     _defaults:
@@ -22,6 +24,11 @@ services:
     App\Service\TelegramBotClient:
         arguments:
             $telegramBotToken: '%telegram.bot_token%'
+
+    App\Service\GptClient:
+        arguments:
+            $geminiApiKey: '%gemini.api_key%'
+            $geminiModel: '%gemini.model%'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

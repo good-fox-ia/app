@@ -44,13 +44,36 @@ class TelegramBotClient
         return $result;
     }
 
-    public function sendMessage(int|string $chatId, string $text): void
+    public function banChatMember(int|string $chatId, int $userId): void
     {
-        $response = $this->httpClient->request('POST', $this->apiBaseUrl . 'sendMessage', [
+        $response = $this->httpClient->request('POST', $this->apiBaseUrl . 'banChatMember', [
             'body' => [
                 'chat_id' => $chatId,
-                'text' => $text,
+                'user_id' => $userId,
             ],
+        ]);
+
+        $data = $response->toArray(false);
+
+        if (!isset($data['ok']) || $data['ok'] !== true) {
+            throw new \RuntimeException('Telegram API error in banChatMember: ' . json_encode($data, JSON_UNESCAPED_UNICODE));
+        }
+    }
+
+    public function sendMessage(int|string $chatId, string $text, ?int $replyToMessageId = null): void
+    {
+        $body = [
+            'chat_id' => $chatId,
+            'text' => $text,
+        ];
+
+        if ($replyToMessageId !== null) {
+            $body['reply_to_message_id'] = $replyToMessageId;
+            $body['allow_sending_without_reply'] = true;
+        }
+
+        $response = $this->httpClient->request('POST', $this->apiBaseUrl . 'sendMessage', [
+            'body' => $body,
         ]);
 
         $data = $response->toArray(false);
