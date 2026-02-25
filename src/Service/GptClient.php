@@ -13,7 +13,7 @@ class GptClient
     ) {
     }
 
-    public function ask(string $prompt): string
+    public function ask(string $prompt, ?int $userId = null): string
     {
         $url = sprintf(
             'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent',
@@ -34,7 +34,11 @@ class GptClient
                             [
                                 'parts' => [
                                     [
-                                        'text' => 'You are a helpful assistant answering messages for a Telegram chat. Reply briefly and in the same language as the user if possible.' . "\n\nUser: " . $prompt,
+                                        'text' => sprintf(
+                                            "You are a helpful assistant answering messages for a Telegram chat. Reply briefly and in the same language as the user if possible.\n\nUser ID: %s\nUser: %s",
+                                            $userId !== null ? (string) $userId : 'unknown',
+                                            $prompt,
+                                        ),
                                     ],
                                 ],
                             ],

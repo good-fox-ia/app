@@ -108,6 +108,8 @@ class TelegramBotRunCommand extends Command
 
         if (str_starts_with($text, '/gpt')) {
             $prompt = trim(mb_substr($text, 4));
+            $from = $message['from'] ?? [];
+            $userId = isset($from['id']) ? (int) $from['id'] : null;
 
             // return 'Я б на твоєму місті пішов би в зал, а не задавався питанням хто скільки не пє';
 
@@ -116,7 +118,7 @@ class TelegramBotRunCommand extends Command
             }
 
             try {
-                return $this->gptClient->ask($prompt);
+                return $this->gptClient->ask($prompt, $userId);
             } catch (\Throwable $e) {
                 return 'Помилка при зверненні до GPT1: ' . $e->getMessage();
             }
