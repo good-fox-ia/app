@@ -60,6 +60,42 @@ class TelegramBotClient
         }
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function getFile(string $fileId): array
+    {
+        $response = $this->httpClient->request('GET', $this->apiBaseUrl . 'getFile', [
+            'query' => [
+                'file_id' => $fileId,
+            ],
+        ]);
+
+        $data = $response->toArray(false);
+
+        if (!isset($data['ok']) || $data['ok'] !== true || !isset($data['result'])) {
+            throw new \RuntimeException('Telegram API error in getFile: ' . json_encode($data, JSON_UNESCAPED_UNICODE));
+        }
+
+        /** @var array<string, mixed> $result */
+        $result = $data['result'];
+
+        return $result;
+    }
+
+    public function downloadFile(string $filePath): string
+    {
+        $fileUrl = sprintf(
+            'https://api.telegram.org/file/bot%s/%s',
+            $this->telegramBotToken,
+            ltrim($filePath, '/'),
+        );
+
+        $response = $this->httpClient->request('GET', $fileUrl);
+
+        return $response->getContent(false);
+    }
+
     public function sendMessage(int|string $chatId, string $text, ?int $replyToMessageId = null): void
     {
         $body = [

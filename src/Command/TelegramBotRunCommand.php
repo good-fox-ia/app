@@ -70,7 +70,9 @@ class TelegramBotRunCommand extends Command
                 $message = $update['message'];
                 $chat = $message['chat'] ?? [];
                 $chatId = $chat['id'] ?? null;
-                $text = isset($message['text']) ? trim((string) $message['text']) : '';
+                $text = isset($message['text'])
+                    ? trim((string) $message['text'])
+                    : (isset($message['caption']) ? trim((string) $message['caption']) : '');
 
                 if ($chatId === null || $text == '') {
                     continue;
@@ -111,14 +113,42 @@ class TelegramBotRunCommand extends Command
             $from = $message['from'] ?? [];
             $userId = isset($from['id']) ? (int) $from['id'] : null;
 
-            // return 'Я б на твоєму місті пішов би в зал, а не задавався питанням хто скільки не пє';
-
             if ($prompt === '') {
                 return 'Напиши текст після /gpt, щоб я міг відповісти.';
             }
 
             try {
-                return $this->gptClient->ask($prompt, $userId);
+                $imageData = null;
+                $imageMime = null;
+
+                if (!empty($message['photo']) && is_array($message['photo'])) {
+                    $photos = $message['photo'];
+                    $photo = end($photos);
+                    if ($photo && isset($photo['file_id'])) {
+                        $fileInfo = $this->telegramBotClient->getFile($photo['file_id']);
+                        $filePath = $fileInfo['file_path'] ?? null;
+                        if ($filePath !== null) {
+                            $imageData = $this->telegramBotClient->downloadFile($filePath);
+                            $imageMime = 'image/jpeg';
+                        }
+                    }
+                } elseif (isset($message['document']) && is_array($message['document'])) {
+                    $document = $message['document'];
+                    $mime = $document['mime_type'] ?? null;
+                    if (is_string($mime) && str_starts_with($mime, 'image/')) {
+                        $fileId = $document['file_id'] ?? null;
+                        if ($fileId !== null) {
+                            $fileInfo = $this->telegramBotClient->getFile($fileId);
+                            $filePath = $fileInfo['file_path'] ?? null;
+                            if ($filePath !== null) {
+                                $imageData = $this->telegramBotClient->downloadFile($filePath);
+                                $imageMime = $mime;
+                            }
+                        }
+                    }
+                }
+
+                return $this->gptClient->ask($prompt, $userId, $imageData, $imageMime);
             } catch (\Throwable $e) {
                 return 'Помилка при зверненні до GPT1: ' . $e->getMessage();
             }
